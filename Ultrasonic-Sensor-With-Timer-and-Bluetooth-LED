@@ -1,0 +1,86 @@
+#include <LiquidCrystal.h>
+
+const int sigPin = 2; 		//one pin for ECHO & SIGNAL
+const int outPin = 13; 		//pin for signal output(this case piezo)
+const int timer = 3; 		//min time for performing action (in seconds)
+const int distance = 100; 	//distance for trigger the timer (in CM)
+
+bool perfAction, firstRun;	
+unsigned long startingTime;
+long distanceCM;
+int remainSec;
+
+LiquidCrystal lcd(10, 9, 3, 4, 5, 6);
+
+
+void setup()
+{
+	pinMode(outPin, OUTPUT);
+  	perfAction = false;
+  	firstRun=true;
+    lcd.begin(16, 2);
+  	printHeaderLCD("WELCOME!");
+    pinMode(1, OUTPUT);
+}
+
+void loop()
+{    	
+  	distanceCM=calculateDistanceCM();
+    
+  	if (distanceCM < distance){
+
+      	if(!perfAction){
+           	printHeaderLCD("Timer:");
+        	perfAction=true;
+          	startingTime=millis();
+        }
+      	if(startingTime!=0){
+        	remainSec=timer-(millis()-startingTime)/1000;
+          	lcd.setCursor(0, 1);
+        	if (remainSec>0){
+            	lcd.print(remainSec);	
+            }else{
+            	lcd.print("completed");
+               digitalWrite(1, HIGH);
+            }
+      	firstRun=false;
+      }
+   }else{          
+        if((millis()-startingTime) < timer*1000 && perfAction){
+			alert();
+           	startingTime=0;
+        }else if (((millis()-startingTime) < timer*1000 || perfAction)&&!firstRun){
+          	printHeaderLCD("Waiting");
+        }
+    	perfAction = false;
+    }
+  	digitalWrite(outPin,LOW);
+  	delay(200);
+}
+
+void alert(){
+  	printHeaderLCD("ERROR");
+	tone(outPin,2000,200);
+  	delay(400);
+  	printHeaderLCD("Waiting");
+}
+
+unsigned long calculateDistanceCM(){
+	long duration;
+  
+ 	pinMode(sigPin, OUTPUT);
+  	digitalWrite(sigPin, LOW);
+  	delayMicroseconds(2);
+  	digitalWrite(sigPin, HIGH);
+  	delayMicroseconds(5);
+  	digitalWrite(sigPin, LOW);
+  
+  	pinMode(sigPin, INPUT);
+  	return pulseIn(sigPin, HIGH)/58;
+}
+
+void printHeaderLCD(const String& text){
+	lcd.clear();
+  	lcd.print(text);
+}
+  	
